@@ -99,11 +99,12 @@ def main():
     if args.results:
         # TODO: More options when displaying results. For now, for anything
         # other than the default has to be queried from the DB directly.
-        deckcount = get_db_deck_count(cursor)
-        results = get_db_card_percentages(cursor, deckcount)
+        results = get_db_card_percentages(cursor)
         for row in results:
             print(row)
+
     conn.close()
+
     if not args.builddecks or args.buildcards or args.results:
         # TODO: Swap to actual Python error handling.
         print('ERROR: You must use either --builddecks, --results, or '
@@ -112,6 +113,9 @@ def main():
 
 
 def build_parser():
+    """
+    Builds the parser object with all of the arguments and help text.
+    """
     desc = ("Scrape Hearthstone decks from HearthPwn, then build a SQLite "
             "database of the results. Also integrates with omgvamp's Mashape "
             "Hearthstone API (http://hearthstoneapi.com/) to build a table of "
@@ -220,12 +224,30 @@ def get_deck_list(deckid):
 
 
 def get_pagetree(url):
+    """
+    Using requests and LXML's HTML module, retrieve a URL and return the page
+    as a tree of LXML HTML elements.
+
+    Parameters:
+
+    'url' - the URL of the webpage to get
+    """
     response = requests.get(url)
     pagetree = html.fromstring(response.text)
     return pagetree
 
 
 def get_elements_from_page(pagetree, css):
+    """
+    Using LXML's GenericTranslater (to translate the selector into XPATH),
+    return only elements that match a CSS selector.
+
+    Parameters:
+
+    'pagetree' - the tree of elements to select from
+    'css' - the CSS selector
+    """
+
     # Have to convert the CSS selectors to XPATH selectors (gross).
     try:
         expression = GenericTranslator().css_to_xpath(css)
@@ -237,12 +259,25 @@ def get_elements_from_page(pagetree, css):
 
 
 def get_attributes_from_page(pagetree, css, attribute):
+    """
+    Using LXML, get all of the attributes from a pagetree that match a css
+    selector, and then return a list containing the contents of a given
+    attribute for each element.
+
+    Parameters:
+
+    'pagetree' - the tree of elements to select from
+    'css' - the CSS selector
+    """
     elements = get_elements_from_page(pagetree, css)
     attributes = [element.attrib[attribute] for element in elements]
     return attributes
 
 
 def get_latest_patch():
+    """
+    Get the latest patch ID from HearthPwn
+    """
     pagetree = get_pagetree('http://www.hearthpwn.com/decks')
     css = '#filter-build > option'
     patches = get_attributes_from_page(pagetree, css, 'value')
@@ -253,6 +288,9 @@ def get_latest_patch():
 
 
 def get_pagecount(pagetree):
+    """
+    Gets the number of pages on a HearthPwn search from a pagetree.
+    """
     css = ('#content > section > div > div > div.listing-header >'
            'div.b-pagination.b-pagination-a > ul > li:nth-child(7) > a')
     pagecount = get_elements_from_page(pagetree, css)[0].text
@@ -260,11 +298,22 @@ def get_pagecount(pagetree):
 
 
 def generate_url(filtering=None, sorting=None, patch=None, classid=None):
-    '''
+    """
     Combines all factors used for sorting into a url.
 
     Default values are also substitued in here.
-    '''
+
+    Parameters:
+
+    'filtering' - the HearthPwn filter used when finding decks, as seen in the
+    HearthPwn URL
+    'sorting' - the HearthPwn sorting used when finding decks, as seen in the
+    HearthPwn URL after "&sort="
+    'patch' - the HearthPwn patch ID used when finding decks, as seen in the
+    HearthPwn URL after "&filter-build="
+    'classid' - the HearthPwn class ID used when finding decks, as seen in the
+    HearthPwn URL after "&filter-class="
+    """
 
     if not filtering:
         filtering = ('filter-is-forge=2&filter-unreleased-cards=f'
@@ -325,6 +374,22 @@ def get_deck_metainfo(filtering=None,
                       count=None,
                       patch=None,
                       classid=None):
+    """
+    Gets a list of (deckid, class) tuples from HearthPwn using the provided
+    paramters.
+
+    Parameters:
+
+    'filtering' - the HearthPwn filter used when finding decks, as seen in the
+    HearthPwn URL
+    'sorting' - the HearthPwn sorting used when finding decks, as seen in the
+    HearthPwn URL after "&sort="
+    'count' - number of decks to retrieve
+    'patch' - the HearthPwn patch ID used when finding decks, as seen in the
+    HearthPwn URL after "&filter-build="
+    'classid' - the HearthPwn class ID used when finding decks, as seen in the
+    HearthPwn URL after "&filter-class="
+    """
     url = generate_url(filtering, sorting, patch, classid)
 
     if not count:
@@ -368,7 +433,14 @@ def get_deck_metainfo(filtering=None,
 
 
 def populate_deck_db(decks, cursor):
-    print()
+    """
+    (Re)populates deck information in the SQLite database.
+
+    Parameters:
+
+    'decks' - a list of Deck objects
+    'cursor' - a SQLite3 cursor object
+    """
     cursor.execute('DROP TABLE IF EXISTS decks')
     cursor.execute('DROP TABLE IF EXISTS deck_lists')
     cursor.execute('''CREATE TABLE IF NOT EXISTS decks
@@ -378,10 +450,7 @@ def populate_deck_db(decks, cursor):
     cursor.execute('''CREATE TABLE IF NOT EXISTS deck_lists
              (deckid integer, cardname text, amount integer,
               PRIMARY KEY (deckid, cardname))''')
-
     for deck in decks:
-        if verbose:
-            print()
         cursor.execute('INSERT INTO decks VALUES (?, ?)',
                        (deck.deckid, deck.playerclass))
         for card in deck.decklist:
@@ -391,6 +460,10 @@ def populate_deck_db(decks, cursor):
 
 
 def get_cards():
+    """
+    Gets a list of all current Hearthstone cards from omgvamp's mashape
+    Hearthstone API, and returns them as a json object.
+    """
     with open("mashape_key.txt", "r") as mashape_key:
         api_key = mashape_key.read()
     print(api_key)
@@ -402,6 +475,14 @@ def get_cards():
 
 
 def populate_card_db(cards, cursor):
+    """
+    (Re)populates card information in the SQLite database.
+
+    Parameters:
+
+    'cards' - a list of Card objects
+    'cursor' - a SQLite3 cursor object
+    """
     cursor.execute('DROP TABLE IF EXISTS cards')
     cursor.execute('''CREATE TABLE IF NOT EXISTS cards
                       (cardname text, cardset text,
@@ -429,13 +510,32 @@ def populate_card_db(cards, cursor):
 
 
 def get_db_deck_count(cursor):
+    """
+    Returns the number of decks currently in the database.
+
+    Parameters:
+
+    'cursor' - a SQLite3 cursor object
+    """
     cursor.execute('SELECT count(*) FROM decks')
     row = cursor.fetchone()
     print(row[0])
     return row[0]
 
 
-def get_db_card_percentages(cursor, count, cardsets=CARD_PACKS):
+def get_db_card_percentages(cursor, cardsets=CARD_PACKS):
+    """
+    For all cards, return: (cardname, total decks using the card, percentage
+    of decks using the card, and average number of the card in a deck) from
+    the database.
+
+    Parameters:
+
+    'cursor' - a SQLite3 cursor object
+    'cardsets' - Hearthstone card sets to include in the results (all
+    others are implicitly excluded)
+    """
+    count = get_db_deck_count(cursor)
     if cardsets:
         sql = '''
               select cards.cardname,
