@@ -6,12 +6,11 @@ import math
 import requests
 import re
 import sqlite3
-import sys
 
 
 # Constants
 DECKS_PER_PAGE = 25.0
-# By default, we're only concerned with cards you can craft
+# By default, we're only concerned with craftable cards
 CARD_PACKS = ['Classic', 'Goblins vs Gnomes']
 
 
@@ -39,17 +38,30 @@ class Deck:
             self.decklist = []
 
     def __repr__(self):
-        output = str(self.deckid)
+        output = str(self.deckid) + '\n'
         for card in self.decklist:
-            output += '\n' + card.cardname + ' - ' + str(card.amount)
+            output += card.cardname + ' - ' + str(card.amount) + '\n'
         return output
 
     def add_card(self, card):
-        """Add a card to the end of a the Deck's decklist"""
+        """
+        Add a Card to the end of a the Deck's decklist
+
+        Parameters:
+
+        'self' - the Deck object calling this function
+        'card' - the Card being added to the Deck
+        """
         self.decklist.append(card)
 
     def get_length(self):
-        """Return the amount of cards in the Deck."""
+        """
+        Return the number of cards in the Deck.
+
+        Parameters:
+
+        'self' - the Deck object calling this function
+        """
         length = 0
         for card in self.decklist:
             length += card.amount
@@ -75,7 +87,7 @@ class Card:
         self.amount = int(amount)
 
     def __repr__(self):
-        return self.cardname + ' - ' + str(self.amount)
+        return self.cardname + ' - ' + str(self.amount) + '\n'
 
 
 def main():
@@ -150,9 +162,20 @@ def build_parser():
 
 
 def get_decks_per_class(filtering=None, sorting=None, count=None, patch=None):
-    '''
-    Used to retrieve the same number of decks for each class.
-    '''
+    """
+    Retrieve Decks from HearthPwn as a list of Deck objects, ensuring the same
+    number of decks are retrieved for each class..
+
+    Parameters:
+
+    'filtering' - the HearthPwn filter used when finding decks, as seen in the
+    HearthPwn URL
+    'sorting' - the HearthPwn sorting used when finding decks, as seen in the
+    HearthPwn URL after "&sort="
+    'count' - number of decks to retrieve
+    'patch' - the HearthPwn patch ID used when finding decks, as seen in the
+    HearthPwn URL after "&filter-build="
+    """
     # For some  strange reason, HearthPwn assigns each class a "power of two"
     # value for filtering by class. For example, Warrior is filter-class=1024.
     # I'm not getting too granular at the moment, so just calculating powers
@@ -173,9 +196,21 @@ def get_decks_per_class(filtering=None, sorting=None, count=None, patch=None):
 
 def get_decks(filtering=None, sorting=None, count=None,
               patch=None, classid=None):
-    '''
-    Retrieve a given number of decks from HearthPwn.
-    '''
+    """
+    Retrieve Decks from HearthPwn as a list of Deck objects.
+
+    Parameters:
+
+    'filtering' - the HearthPwn filter used when finding decks, as seen in the
+    HearthPwn URL
+    'sorting' - the HearthPwn sorting used when finding decks, as seen in the
+    HearthPwn URL after "&sort="
+    'count' - number of decks to retrieve
+    'patch' - the HearthPwn patch ID used when finding decks, as seen in the
+    HearthPwn URL after "&filter-build="
+    'classid' - the HearthPwn class ID used when finding decks, as seen in the
+    HearthPwn URL after "&filter-class="
+    """
     decks_metainfo = get_deck_metainfo(filtering, sorting, count,
                                        patch, classid)
     decks = [Deck(deck[0], deck[1], get_deck_list(deck[0]))
@@ -184,6 +219,14 @@ def get_decks(filtering=None, sorting=None, count=None,
 
 
 def get_deck_list(deckid):
+    """
+    For a given HearthPwn deck ID, return a list of Cards that belong to that
+    deck.
+
+    Parameters:
+
+    'deckid' - a HearthPwn deck ID
+    """
     # Need to know if we're looking at a deckid or deckid tuple
     # TODO: Clean this up a bit (shouldn't need to support deckids or deck)
     # tuples now that I'm using Deck objects.)
@@ -239,7 +282,7 @@ def get_pagetree(url):
 
 def get_elements_from_page(pagetree, css):
     """
-    Using LXML's GenericTranslater (to translate the selector into XPATH),
+    Using cssselect's GenericTranslater (to translate the selector into XPATH),
     return only elements that match a CSS selector.
 
     Parameters:
