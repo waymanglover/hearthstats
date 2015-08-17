@@ -1,7 +1,7 @@
 # hearthstats
 
-Scrape Hearthstone decks from HearthPwn, then build a SQLite database of the
-results. Also integrates with omgvamp's Mashape Hearthstone API
+Scrape Hearthstone decks from HearthPwn, then populate a table in a SQLite database 
+using the results. Also integrates with omgvamp's Mashape Hearthstone API
 (http://hearthstoneapi.com/) to build a table of card data that can be used to
 make more advanced queries.
 
@@ -29,4 +29,6 @@ optional arguments:
                         average number of the card in decks using the card
 ```
 
-Note: Before populating the card database, you must first register for an API key at Mashape.com. Once you have your API key, create a mashape_key.txt file in the same folder as the script and paste your key into the file.
+Note: Before populating the card database, you must first register for an API key at 
+Mashape.com. Once you have your API key, create a mashape_key.txt file in the same 
+folder as the script and paste your API key into it.
