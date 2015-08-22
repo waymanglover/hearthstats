@@ -117,7 +117,7 @@ def main():
 
     conn.close()
 
-    if not args.builddecks or args.buildcards or args.results:
+    if not args.builddecks and not args.buildcards and not args.results:
         # TODO: Swap to actual Python error handling.
         print('ERROR: You must use either --builddecks, --results, or '
               '--results')
