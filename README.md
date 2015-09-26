@@ -5,6 +5,8 @@ using the results. Also integrates with omgvamp's Mashape Hearthstone API
 (http://hearthstoneapi.com/) to build a table of card data that can be used to
 make more advanced queries.
 
+Requires lxml, cssselect, and requests packages.
+
 ```
 usage: hearth.py [-h] [--buildcards] [--builddecks] [--perclass]
                  [--count COUNT] [--filtering FILTERING] [--sorting SORTING]
