@@ -1,2 +1,4 @@
 *.db
 /mashape_key.txt
+re
+sqlite3
