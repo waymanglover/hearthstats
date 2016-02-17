@@ -1,3 +1,5 @@
+#!/usr/bin/env python
+
 from cssselect import GenericTranslator, SelectorError
 from lxml import html
 import argparse
@@ -7,12 +9,8 @@ import requests
 import re
 import sqlite3
 
-
 # Constants
 DECKS_PER_PAGE = 25.0
-# By default, we're only concerned with craftable cards
-CARD_PACKS = ['Classic', 'Goblins vs Gnomes']
-
 
 class Deck:
 
@@ -87,7 +85,7 @@ class Card:
         self.amount = int(amount)
 
     def __repr__(self):
-        return self.cardname + ' - ' + str(self.amount) + '\n'
+        return str(self.amount) + ' ' + self.cardname
 
 
 def main():
@@ -96,6 +94,7 @@ def main():
     conn = sqlite3.connect('hearth.db')
     cursor = conn.cursor()
     if args.builddecks:
+        print "Rebuilding deck database..."
         if args.perclass:
             decks = get_decks_per_class(args.filtering, args.sorting,
                                         args.count, args.patch)
@@ -105,6 +104,7 @@ def main():
         populate_deck_db(decks, cursor)
 
     if args.buildcards:
+        print "Rebuilding card database..."
         populate_card_db(get_cards(), cursor)
     conn.commit()
 
@@ -112,8 +112,11 @@ def main():
         # TODO: More options when displaying results. For now, for anything
         # other than the default has to be queried from the DB directly.
         results = get_db_card_percentages(cursor)
+        print("cardname, total decks using card, % decks using card, avg number in a deck")
         for row in results:
-            print(row)
+            if row[1] == 0 and row[2] == 0 and row[3] == 0:
+                continue
+            print "{0}, {1}, {2:0.2f}%, {3:0.2f}".format(row[0], row[1], row[2], row[3])
 
     conn.close()
 
@@ -227,6 +230,7 @@ def get_deck_list(deckid):
 
     'deckid' - a HearthPwn deck ID
     """
+    print "."
     # Need to know if we're looking at a deckid or deckid tuple
     # TODO: Clean this up a bit (shouldn't need to support deckids or deck)
     # tuples now that I'm using Deck objects.)
@@ -254,12 +258,12 @@ def get_deck_list(deckid):
         card = html.tostring(element, method='text', encoding='UTF-8')
         cards.append(card)
 
-    regex = re.compile(b'^\r\n(.+)\r\n\r\n\xc3\x97 (\d+)')
+    regex = re.compile(b'(.+)\r\n.+\r\n\r\n \xc3\x97 (\d+)')
     deck = []
     for card in cards:
         match = re.search(regex, card)
         if match:
-            cardname = match.group(1).decode('UTF-8')
+            cardname = match.group(1).strip()
             amount = int(match.group(2))
             deck.append(Card(cardname, amount))
 
@@ -433,18 +437,18 @@ def get_deck_metainfo(filtering=None,
     'classid' - the HearthPwn class ID used when finding decks, as seen in the
     HearthPwn URL after "&filter-class="
     """
+    print "."
     url = generate_url(filtering, sorting, patch, classid)
-
+    
     if not count:
         pagecount = get_pagecount(get_pagetree(url))
-        count = pagecount * .1
-    print(count)
+        count = int(pagecount * .1)
 
     pagecount = math.ceil(count / DECKS_PER_PAGE)
 
     regex = re.compile('^\s*\/decks\/(\d+)')
     output = []
-    for pagenum in range(1, pagecount+1):  # Adding one as range is exclusive
+    for pagenum in range(1, int(pagecount)+1):  # Adding one as range is exclusive
 
         # For each page, get a list of decks from all of the href attributes.
         # Then for each list of decks, pull out the deck ID using regex.
@@ -509,7 +513,6 @@ def get_cards():
     """
     with open("mashape_key.txt", "r") as mashape_key:
         api_key = mashape_key.read()
-    print(api_key)
     url = "https://omgvamp-hearthstone-v1.p.mashape.com/cards?collectible=1"
     headers = {"X-Mashape-Key": api_key}
     response = requests.get(url, headers=headers)
@@ -538,13 +541,12 @@ def populate_card_db(cards, cursor):
     # they are considered "collectible cards" by HearthStone, but not for our
     # purposes. We will filter out cards where "type": "Hero" later for
     # similar reasons.
-    valid_cardsets = [cardset for cardset, cards in cards.items() if cards
-                      and cardset != 'Hero Skins']
-    print(valid_cardsets)
+    valid_cardsets = {cardset: cards for cardset, cards in cards.iteritems()
+                        if cards and cardset != 'Hero Skins'}
+
     for cardset in valid_cardsets:
         for card in cards[cardset]:
             if card['type'] != 'Hero':
-
                 cursor.execute('INSERT INTO cards VALUES (?, ?, ?, ?)',
                                (card['name'], card['cardSet'],
                                 card.get('playerClass', 'Neutral'),
@@ -562,11 +564,10 @@ def get_db_deck_count(cursor):
     """
     cursor.execute('SELECT count(*) FROM decks')
     row = cursor.fetchone()
-    print(row[0])
     return row[0]
 
 
-def get_db_card_percentages(cursor, cardsets=CARD_PACKS):
+def get_db_card_percentages(cursor, cardsets=None):
     """
     For all cards, return: (cardname, total decks using the card, percentage
     of decks using the card, and average number of the card in a deck) from
