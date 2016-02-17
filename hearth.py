@@ -8,6 +8,7 @@ import math
 import requests
 import re
 import sqlite3
+import sys
 
 # Constants
 DECKS_PER_PAGE = 25.0
@@ -18,18 +19,28 @@ class Deck:
 	An object representing a single Hearthstone deck pulled from HearthPwn.
 	"""
 
-	def __init__(self, deckid, playerclass, decklist):
+	def __init__(self, deckid, hero, decktype, rating, dust, updated, decklist):
+	# returns (links, classes, types, ratings, dusts, epochs)
 		"""
 		Initialize a HearthPwn Deck object.
 
 		Parameters:
 
-		- 'deckid' - the HearthPwn ID number of the deck (as seen in the URL)
-		- 'playerclass' - the Hearthstone class of the deck
+		- 'deckid'   - the HearthPwn ID number of the deck (as seen in the URL)
+		- 'hero'     - the Hearthstone class of the deck
+		- 'type'     - the deck type (midrange, tempo, control, etc)
+		- 'rating'   - the HearthPwn deck rating
+		- 'dust'     - dust required to craft deck
+		- 'updated'  - epoch timestamp of last update
 		- 'decklist' - a list of Card objects
 		"""
-		self.deckid = int(deckid)
-		self.playerclass = str(playerclass)
+		
+		self.deckid  = int(deckid)
+		self.hero    = str(hero)
+		self.type    = str(decktype)
+		self.rating  = int(rating)
+		self.dust    = int(dust)
+		self.updated = int(updated)
 		if decklist is not None:
 			self.decklist = decklist
 		else:
@@ -38,7 +49,7 @@ class Deck:
 	def __repr__(self):
 		output = str(self.deckid) + '\n'
 		for card in self.decklist:
-			output += card.cardname + ' - ' + str(card.amount) + '\n'
+			output += str(card.amount) + ' ' + card.cardname + '\n'
 		return output
 
 	def add_card(self, card):
@@ -94,7 +105,7 @@ def main():
 	conn = sqlite3.connect('hearth.db')
 	cursor = conn.cursor()
 	if args.builddecks:
-		print "Rebuilding deck database..."
+		sys.stdout.write("Rebuilding deck database...")
 		if args.perclass:
 			decks = get_decks_per_class(args.filtering, args.sorting,
 										args.count, args.patch)
@@ -104,8 +115,10 @@ def main():
 		populate_deck_db(decks, cursor)
 
 	if args.buildcards:
-		print "Rebuilding card database..."
+		sys.stdout.write("Rebuilding card database...")
 		populate_card_db(get_cards(), cursor)
+	
+	print ""
 	conn.commit()
 
 	if args.results:
@@ -197,8 +210,7 @@ def get_decks_per_class(filtering=None, sorting=None, count=None, patch=None):
 	return decks
 
 
-def get_decks(filtering=None, sorting=None, count=None,
-			  patch=None, classid=None):
+def get_decks(filtering=None, sorting=None, count=None, patch=None, classid=None):
 	"""
 	Retrieve Decks from HearthPwn as a list of Deck objects.
 
@@ -214,10 +226,11 @@ def get_decks(filtering=None, sorting=None, count=None,
 	'classid' - the HearthPwn class ID used when finding decks, as seen in the
 	HearthPwn URL after "&filter-class="
 	"""
-	decks_metainfo = get_deck_metainfo(filtering, sorting, count,
-									   patch, classid)
-	decks = [Deck(deck[0], deck[1], get_deck_list(deck[0]))
+	decks_metainfo = get_deck_metainfo(filtering, sorting, count, patch, classid)
+	
+	decks = [Deck(deck[0], deck[1], deck[2], deck[3], deck[4], deck[5], get_deck_list(deck[0]))
 			 for deck in decks_metainfo]
+	
 	return decks
 
 
@@ -230,14 +243,8 @@ def get_deck_list(deckid):
 
 	'deckid' - a HearthPwn deck ID
 	"""
-	print "."
-	# Need to know if we're looking at a deckid or deckid tuple
-	# TODO: Clean this up a bit (shouldn't need to support deckids or deck)
-	# tuples now that I'm using Deck objects.)
-	if isinstance(deckid, tuple):
-		# The deckid is in deck[0]
-		# Format is (deckid, deck_class)
-		deckid = deckid[0]
+	sys.stdout.write(".")
+	
 	# http://www.hearthpwn.com/decks/listing/ + /neutral or /class
 	url = 'http://www.hearthpwn.com/decks/listing/'
 	css = '#cards > tbody > tr > td.col-name'
@@ -416,11 +423,7 @@ def generate_url(filtering=None, sorting=None, patch=None, classid=None):
 
 
 # Returns (deckid, class)
-def get_deck_metainfo(filtering=None,
-					  sorting=None,
-					  count=None,
-					  patch=None,
-					  classid=None):
+def get_deck_metainfo(filtering=None, sorting=None, count=None, patch=None, classid=None):
 	"""
 	Gets a list of (deckid, class) tuples from HearthPwn using the provided
 	paramters.
@@ -437,7 +440,7 @@ def get_deck_metainfo(filtering=None,
 	'classid' - the HearthPwn class ID used when finding decks, as seen in the
 	HearthPwn URL after "&filter-class="
 	"""
-	print "."
+	sys.stdout.write(".")
 	url = generate_url(filtering, sorting, patch, classid)
 	
 	if not count:
@@ -464,17 +467,30 @@ def get_deck_metainfo(filtering=None,
 		# HearthPwn decks table (being specific to make sure we get the right
 		# elements.) We can pull the deck IDs from the HREF attribute.
 		css = '#decks > tbody > tr > td.col-name > div > span > a'
-		deckelements = get_elements_from_page(pagetree, css)
+		links = get_elements_from_page(pagetree, css)
+		css = '#decks > tbody > tr > td.col-deck-type'
+		decktypes = get_elements_from_page(pagetree, css)
 		css = '#decks > tbody > tr > td.col-class'
-		classelements = get_elements_from_page(pagetree, css)
+		heros = get_elements_from_page(pagetree, css)
+		css = '#decks > tbody > tr > td.col-ratings > div'
+		ratings = get_elements_from_page(pagetree, css)
+		css = '#decks > tbody > tr > td.col-dust-cost'
+		dusts = get_elements_from_page(pagetree, css)
+		css = '#decks > tbody > tr > td.col-updated > abbr'
+		epochs = get_elements_from_page(pagetree, css)
 
-		classes = [classelement.text for classelement in classelements]
-		decks = [deck.attrib['href'] for deck in deckelements]
-
-		for x in range(len(decks)):
-			match = re.search(regex, decks[x])
-			decks[x] = int(match.group(1))
-		output += list(zip(decks, classes))
+		links = [link.attrib['href'] for link in links]
+		types = [decktype.text for decktype in decktypes]
+		classes = [hero.text for hero in heros]
+		ratings = [rating.text for rating in ratings]
+		dusts = [dust.text.replace(",", "").replace("k","00").replace(".","") for dust in dusts]
+		epochs = [epoch.attrib['data-epoch'] for epoch in epochs]
+		
+		for x in range(len(links)):
+			match = re.search(regex, links[x])
+			links[x] = int(match.group(1))
+		
+		output += list(zip(links, classes, types, ratings, dusts, epochs))
 
 	return output[:count]
 
@@ -491,15 +507,16 @@ def populate_deck_db(decks, cursor):
 	cursor.execute('DROP TABLE IF EXISTS decks')
 	cursor.execute('DROP TABLE IF EXISTS deck_lists')
 	cursor.execute('''CREATE TABLE IF NOT EXISTS decks
-			 (deckid integer primary key, class text)
+			 (deckid integer primary key, class text, type text, rating integer, dust integer, updated integer)
 			 WITHOUT ROWID''')
 
 	cursor.execute('''CREATE TABLE IF NOT EXISTS deck_lists
 			 (deckid integer, cardname text, amount integer,
 			  PRIMARY KEY (deckid, cardname))''')
 	for deck in decks:
-		cursor.execute('INSERT INTO decks VALUES (?, ?)',
-					   (deck.deckid, deck.playerclass))
+		cursor.execute('INSERT INTO decks VALUES (?, ?, ?, ?, ?, ?)',
+			(deck.deckid, deck.hero, deck.type, deck.rating, deck.dust, deck.updated))
+		
 		for card in deck.decklist:
 			cursor.execute('INSERT INTO deck_lists VALUES (?, ?, ?)',
 						   (deck.deckid, card.cardname, card.amount))
@@ -532,7 +549,7 @@ def populate_card_db(cards, cursor):
 	cursor.execute('DROP TABLE IF EXISTS cards')
 	cursor.execute('''CREATE TABLE IF NOT EXISTS cards
 					  (cardname text, cardset text,
-					   playerclass text, rarity text,
+					   hero text, rarity text,
 					   PRIMARY KEY (cardname))''')
 	# Removing invalid sets from our results. For the most part, these sets are
 	# empty lists as we filter out non-collectible cards. The Mashape API
@@ -563,9 +580,19 @@ def get_db_deck_count(cursor):
 	'cursor' - a SQLite3 cursor object
 	"""
 	cursor.execute('SELECT count(*) FROM decks')
-	row = cursor.fetchone()
-	return row[0]
+	return cursor.fetchone()[0]
 
+def get_db_deck_updated(cursor, deckid):
+	"""
+	Returns the timestamp of the specified deck
+
+	Parameters:
+
+	'cursor' - a SQLite3 cursor object
+	'deckid' - a HearthPwn deck ID
+	"""
+	cursor.execute('SELECT updated FROM decks WHERE deckid IS ?', (deckid,))
+	return cursor.fetchone()[0]
 
 def get_db_card_percentages(cursor, cardsets=None):
 	"""
