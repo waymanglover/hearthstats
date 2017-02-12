@@ -12,7 +12,7 @@ avg(coalesce(deck_lists.amount, 0)) as [Average Per Deck]
 from cards
 left join deck_lists
 on cards.cardname = deck_lists.cardname
-where cards.cardset in ('Classic', 'Goblins vs Gnomes')
+where cards.cardset in ('Classic', 'Whispers of the Old Gods', 'Mean Streets of Gadgetzan', 'The Grand Tournament')
 and cards.playerclass <> 'Neutral'
 group by cards.cardname
 order by Percent desc
