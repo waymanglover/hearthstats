@@ -100,12 +100,16 @@ class Card:
 
 
 def main():
+	print("Loading Parser")
 	parser = build_parser()
 	args = parser.parse_args()
+	print("Parser loaded")
+	print("Connecting to SQLite3")
 	conn = sqlite3.connect('hearth.db')
 	cursor = conn.cursor()
+	print("SQLite3 Connected")
 	if args.builddecks:
-		sys.stdout.write("Rebuilding deck database...")
+		print("Rebuilding deck database...")
 		if args.perclass:
 			decks = get_decks_per_class(args.filtering, args.sorting,
 										args.count, args.patch)
@@ -115,28 +119,34 @@ def main():
 		populate_deck_db(decks, cursor)
 
 	if args.buildcards:
-		sys.stdout.write("Rebuilding card database...")
+		print("Rebuilding card database...")
 		populate_card_db(get_cards(), cursor)
 	
-	print ""
+	print ("")
 	conn.commit()
-
-	if args.results:
+	
+	# args.results NOT WORKING, removed while I work on it
+	# if args.results:
 		# TODO: More options when displaying results. For now, for anything
 		# other than the default has to be queried from the DB directly.
-		results = get_db_card_percentages(cursor)
-		print("cardname, total decks using card, % decks using card, avg number in a deck")
-		for row in results:
-			if row[1] == 0 and row[2] == 0 and row[3] == 0:
-				continue
-			print "{0}, {1}, {2:0.2f}%, {3:0.2f}".format(row[0], row[1], row[2], row[3])
+		# results = get_db_card_percentages(cursor)
+		# print("cardname, total decks using card, % decks using card, avg number in a deck")
+		# for row in results:
+			# if row[1] == 0 and row[2] == 0 and row[3] == 0:
+				# continue
+			# print( "{0}, {1}, {2:0.2f}%, {3:0.2f}".format(row[0], row[1], row[2], row[3]))
 
 	conn.close()
 
-	if not args.builddecks and not args.buildcards and not args.results:
+	# if not args.builddecks and not args.buildcards and not args.results:
 		# TODO: Swap to actual Python error handling.
-		print('ERROR: You must use either --builddecks, --results, or '
-			  '--results')
+		# print('ERROR: You must use either --builddecks, --buildcards, or '
+			  # '--results')
+		# parser.print_help()
+	
+	if not args.builddecks and not args.buildcards:
+		# TODO: Swap to actual Python error handling.
+		print('ERROR: You must use either --builddecks or --buildcards)
 		parser.print_help()
 
 
@@ -169,11 +179,12 @@ def build_parser():
 						help='the HearthPwn patch ID used when finding '
 							 'decks, as seen in the HearthPwn URL after '
 							 '"&filter-build="')
-	parser.add_argument('--results', action='store_true',
-						help='for all cards, print the: cardname, total decks '
-							 'using the card, percentage of decks '
-							 'using the card, and average number of the card '
-							 'in decks using the card')
+	# TODO: results not working, needs rework
+	# parser.add_argument('--results', action='store_true',
+						# help='for all cards, print the: cardname, total decks '
+							 # 'using the card, percentage of decks '
+							 # 'using the card, and average number of the card '
+							 # 'in decks using the card')
 	return parser
 
 
@@ -390,11 +401,11 @@ def generate_url(filtering=None, sorting=None, patch=None, classid=None):
 		# pull decks from the most recent patch.
 		if filtering[-1] != '?' and filtering[-1] != '&':
 			filtering += '&'
-		filtering += 'filter-build=' + patch
+		filtering += 'filter-build=' + str(patch)
 	elif patch:
 		# Not currently used as filtering has a default above, but leaving just
 		# in case I change how this works in the future.
-		filtering = 'filter-build=' + patch
+		filtering = 'filter-build=' + str(patch)
 
 	# Combine classid and filtering
 	if classid and filtering:
@@ -468,7 +479,7 @@ def get_deck_metainfo(filtering=None, sorting=None, count=None, patch=None, clas
 		# elements.) We can pull the deck IDs from the HREF attribute.
 		css = '#decks > tbody > tr > td.col-name > div > span > a'
 		links = get_elements_from_page(pagetree, css)
-		css = '#decks > tbody > tr > td.col-deck-type'
+		css = '#decks > tbody > tr > td.col-deck-type > span'
 		decktypes = get_elements_from_page(pagetree, css)
 		css = '#decks > tbody > tr > td.col-class'
 		heros = get_elements_from_page(pagetree, css)
@@ -508,18 +519,20 @@ def populate_deck_db(decks, cursor):
 	cursor.execute('DROP TABLE IF EXISTS deck_lists')
 	cursor.execute('''CREATE TABLE IF NOT EXISTS decks
 			 (deckid integer primary key, class text, type text, rating integer, dust integer, updated integer)
-			 WITHOUT ROWID''')
+			 ''')
+			 # (deckid AUTOINCREMENT integer primary key, class text, type text, rating integer, dust integer, updated integer)
 
 	cursor.execute('''CREATE TABLE IF NOT EXISTS deck_lists
 			 (deckid integer, cardname text, amount integer,
 			  PRIMARY KEY (deckid, cardname))''')
 	for deck in decks:
-		cursor.execute('INSERT INTO decks VALUES (?, ?, ?, ?, ?, ?)',
-			(deck.deckid, deck.hero, deck.type, deck.rating, deck.dust, deck.updated))
-		
+		cursor.execute('INSERT INTO decks (class, type, rating, dust, updated) VALUES ( ?, ?, ?, ?, ?)',
+			#(deck.deckid, deck.hero, deck.type, deck.rating, deck.dust, deck.updated))
+			(deck.hero, deck.type, deck.rating, deck.dust, deck.updated))
+		last_id = cursor.lastrowid
 		for card in deck.decklist:
 			cursor.execute('INSERT INTO deck_lists VALUES (?, ?, ?)',
-						   (deck.deckid, card.cardname, card.amount))
+						   (last_id, card.cardname, card.amount))
 	return
 
 
@@ -558,9 +571,8 @@ def populate_card_db(cards, cursor):
 	# they are considered "collectible cards" by HearthStone, but not for our
 	# purposes. We will filter out cards where "type": "Hero" later for
 	# similar reasons.
-	valid_cardsets = {cardset: cards for cardset, cards in cards.iteritems()
+	valid_cardsets = {cardset: cards for cardset, cards in cards.items()
 						if cards and cardset != 'Hero Skins'}
-
 	for cardset in valid_cardsets:
 		for card in cards[cardset]:
 			if card['type'] != 'Hero':
