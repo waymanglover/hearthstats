@@ -10,7 +10,7 @@ Requires lxml, cssselect, and requests packages.
 ```
 usage: hearth.py [-h] [--buildcards] [--builddecks] [--perclass]
                  [--count COUNT] [--filtering FILTERING] [--sorting SORTING]
-                 [--patch PATCH] [--results]
+                 [--patch PATCH]
 
 optional arguments:
   -h, --help            show this help message and exit
@@ -26,9 +26,6 @@ optional arguments:
                         in the HearthPwn URL after "&sort="
   --patch PATCH         the HearthPwn patch ID used when finding decks, as
                         seen in the HearthPwn URL after "&filter-build="
-  --results             for all cards, print the: cardname, total decks using
-                        the card, percentage of decks using the card, and
-                        average number of the card in decks using the card
 ```
 
 Note: Before populating the card database, you must first register for an API key at 
