@@ -7,6 +7,11 @@ Mashape Hearthstone API (http://hearthstoneapi.com) to build a table of card
 data that can be used to make more advanced queries.
 
 Requires lxml, cssselect, and requests packages.
+These can be installed by opening a command prompt in the hearthstats folder, and running the following command:
+
+```
+pip install -r requirements.txt
+```
 
 ```
 usage: hearth.py [-h] [--buildcards] [--builddecks] [--buildcollection]
@@ -41,7 +46,7 @@ optional arguments:
                         count of the card in your collection.
 ```
 
-Note: Before populating the card database, you must first register for an API key at 
+Before populating the card database, you must first register for an API key at 
 Mashape.com. Once you have your API key, rename config.ini.example to config.ini if 
 config.ini does not already exist, and open config.ini in a text editor 
 (running the script once will also create a blank config.ini file):
