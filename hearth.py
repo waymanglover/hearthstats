@@ -107,7 +107,7 @@ def main():
         # TODO: Swap to actual Python error/exception handling?
         print('ERROR: You must use --builddecks, --buildcards,'
               ' and/or --buildcollection')
-        parser.print_help()
+        argparser.print_help()
         sys.exit(-1)
     mashape_key = config['Configuration']['MashapeKey']
     auth_session = config['Configuration']['AuthSession']
