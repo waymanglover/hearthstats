@@ -4,3 +4,5 @@ re
 sqlite3
 __pycache__
 *.pyc
+*.ini
+.vscode/*
