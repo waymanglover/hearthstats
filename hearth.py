@@ -61,7 +61,7 @@ class Deck:
 
         Parameters:
 
-        'self' - the Deck object calling this function
+        - 'self' - the Deck object calling this function
         """
         length = 0
         # Can't just do a count since you can have 1 or 2 of a card
@@ -248,12 +248,12 @@ def get_decks_per_class(filtering=None, sorting=None, count=None, patch=None):
 
     Parameters:
 
-    'filtering' - the HearthPwn filter used when finding decks, as seen in the
-    HearthPwn URL
-    'sorting' - the HearthPwn sorting used when finding decks, as seen in the
+    - 'filtering' - the HearthPwn filter used when finding decks, as seen in
+    the HearthPwn URL
+    - 'sorting' - the HearthPwn sorting used when finding decks, as seen in the
     HearthPwn URL after "&sort="
-    'count' - number of decks to retrieve
-    'patch' - the HearthPwn patch ID used when finding decks, as seen in the
+    - 'count' - number of decks to retrieve
+    - 'patch' - the HearthPwn patch ID used when finding decks, as seen in the
     HearthPwn URL after "&filter-build="
     """
     # HearthPwn assigns each class a "power of two" value for filtering by
@@ -282,15 +282,15 @@ def get_decks(filtering=None, sorting=None, count=None,
 
     Parameters:
 
-    'filtering' - the HearthPwn filter used when finding decks, as seen in the
-    HearthPwn URL
-    'sorting' - the HearthPwn sorting used when finding decks, as seen in the
+    - 'filtering' - the HearthPwn filter used when finding decks, as seen in
+    the HearthPwn URL
+    - 'sorting' - the HearthPwn sorting used when finding decks, as seen in the
     HearthPwn URL after "&sort="
-    'count' - number of decks to retrieve
-    'patch' - the HearthPwn patch ID used when finding decks, as seen in the
+    - 'count' - number of decks to retrieve
+    - 'patch' - the HearthPwn patch ID used when finding decks, as seen in the
     HearthPwn URL after "&filter-build="
-    'classid' - the HearthPwn class ID used when finding decks, as seen in the
-    HearthPwn URL after "&filter-class="
+    - 'classid' - the HearthPwn class ID used when finding decks, as seen in
+    the HearthPwn URL after "&filter-class="
     """
     decks_metainfo = get_deck_metainfo(filtering, sorting, count,
                                        patch, classid)
@@ -312,7 +312,7 @@ def get_deck_list(deckid):
 
     Parameters:
 
-    'deckid' - a HearthPwn deck ID
+    - 'deckid' - a HearthPwn deck ID
     """
     # http://www.hearthpwn.com/decks/listing/ + deckid + /neutral or /class
     url = 'http://www.hearthpwn.com/decks/listing/'
@@ -355,7 +355,7 @@ def get_htmlelement_from_url(url):
 
     Parameters:
 
-    'url' - the URL of the webpage to get
+    - 'url' - the URL of the webpage to get
     """
     response = requests.get(url)
     htmlelement = html.fromstring(response.text)
@@ -370,9 +370,9 @@ def get_attributes_from_page(htmlelement, css, attribute):
 
     Parameters:
 
-    'htmlelement' - the HtmlElement containing elements to select from
-    'css' - string containing the CSS selector
-    'attribute' - string containing the attribute
+    - 'htmlelement' - the HtmlElement containing elements to select from
+    - 'css' - string containing the CSS selector
+    - 'attribute' - string containing the attribute
     """
     elements = htmlelement.cssselect(css)
     attributes = [element.attrib[attribute] for element in elements]
@@ -411,14 +411,14 @@ def generate_url(filtering=None, sorting=None, patch=None, classid=None):
 
     Parameters:
 
-    'filtering' - the HearthPwn filter used when finding decks, as seen in the
-    HearthPwn URL
-    'sorting' - the HearthPwn sorting used when finding decks, as seen in the
+    - 'filtering' - the HearthPwn filter used when finding decks, as seen in
+    the HearthPwn URL
+    - 'sorting' - the HearthPwn sorting used when finding decks, as seen in the
     HearthPwn URL after "&sort="
-    'patch' - the HearthPwn patch ID used when finding decks, as seen in the
+    - 'patch' - the HearthPwn patch ID used when finding decks, as seen in the
     HearthPwn URL after "&filter-build="
-    'classid' - the HearthPwn class ID used when finding decks, as seen in the
-    HearthPwn URL after "&filter-class="
+    - 'classid' - the HearthPwn class ID used when finding decks, as seen in
+    the HearthPwn URL after "&filter-class="
     """
     # TODO: Rework this -- doesn't make sense to have default values but also
     # take into account the posibility of no value being present.
@@ -487,15 +487,15 @@ def get_deck_metainfo(filtering=None, sorting=None, count=None,
 
     Parameters:
 
-    'filtering' - the HearthPwn filter used when finding decks, as seen in the
-    HearthPwn URL
-    'sorting' - the HearthPwn sorting used when finding decks, as seen in the
+    - 'filtering' - the HearthPwn filter used when finding decks, as seen in
+    the HearthPwn URL
+    - 'sorting' - the HearthPwn sorting used when finding decks, as seen in the
     HearthPwn URL after "&sort="
-    'count' - number of decks to retrieve
-    'patch' - the HearthPwn patch ID used when finding decks, as seen in the
+    - 'count' - number of decks to retrieve
+    - 'patch' - the HearthPwn patch ID used when finding decks, as seen in the
     HearthPwn URL after "&filter-build="
-    'classid' - the HearthPwn class ID used when finding decks, as seen in the
-    HearthPwn URL after "&filter-class="
+    - 'classid' - the HearthPwn class ID used when finding decks, as seen in
+    the HearthPwn URL after "&filter-class="
     """
     url = generate_url(filtering, sorting, patch, classid)
 
@@ -515,12 +515,11 @@ def get_deck_metainfo(filtering=None, sorting=None, count=None,
         # For each page, get a list of decks from all of the href attributes.
         # Then for each list of decks, pull out the deck ID using regex.
         # Finally, if there is a match, append the deck ID to the deckids list.
-
-        if pagenum == 1:
-            htmlelement = get_htmlelement_from_url(url)
-        else:
+        page = ''
+        if pagenum > 1:
             page = '&page=' + str(pagenum)
-            htmlelement = get_htmlelement_from_url(url + page)
+
+        htmlelement = get_htmlelement_from_url(url + page)
 
         # This CSS selector grabs all of the a (HTML hyperlink) elements in the
         # HearthPwn decks table (being specific to make sure we get the right
@@ -561,8 +560,8 @@ def populate_deck_db(decks, cursor):
 
     Parameters:
 
-    'decks' - a list of Deck objects
-    'cursor' - a SQLite3 cursor object
+    - 'decks' - a list of Deck objects
+    - 'cursor' - a SQLite3 cursor object
     """
     cursor.execute('DROP TABLE IF EXISTS decks')
     cursor.execute('DROP TABLE IF EXISTS deck_lists')
@@ -588,6 +587,10 @@ def get_cards(mashape_key):
     """
     Gets a list of all current Hearthstone cards from omgvamp's mashape
     Hearthstone API, and returns them as a json object.
+
+    Parameters:
+
+    - 'mashape_key' - a string containing a Mashape API key
     """
     if len(mashape_key) <= 0:
         print('Mashape API key does not exist in config.ini')
@@ -610,9 +613,9 @@ def populate_card_db(cards, cursor):
 
     Parameters:
 
-    'cards' - a JSON object containing a card collection, obtained from the
+    - 'cards' - a JSON object containing a card collection, obtained from the
               Mashape API
-    'cursor' - a SQLite3 cursor object
+    - 'cursor' - a SQLite3 cursor object
     """
     cursor.execute('DROP TABLE IF EXISTS cards')
     cursor.execute('''CREATE TABLE IF NOT EXISTS cards
@@ -642,6 +645,10 @@ def get_collection(auth_session):
     """
     Gets a list of all cards in your HearthPwn collection,
     and returns them as a json object.
+
+    Parameters:
+
+    - 'auth_session' - a string containing a HearthPwn Auth.Session cookie
     """
     if len(auth_session) <= 0:
         print('Auth Session does not exist in config.ini')
@@ -664,9 +671,9 @@ def populate_collection_db(collection, cursor):
 
     Parameters:
 
-    'collection' - a JSON object containing a card collection, obtained from
+    - 'collection' - a JSON object containing a card collection, obtained from
                    http://www.hearthpwn.com/ajax/collection
-    'cursor' - a SQLite3 cursor object
+    - 'cursor' - a SQLite3 cursor object
     """
     # TODO: Possibly skip all of this if the collection hasn't been updated
     # since the last time this was ran.
@@ -699,8 +706,8 @@ def get_cardname(card_id, cursor):
 
     Parameters:
 
-    'card_id' - the integer ID of the card to find the name of
-    'cursor' - a SQLite3 cursor object
+    - 'card_id' - the integer ID of the card to find the name of
+    - 'cursor' - a SQLite3 cursor object
     """
     url = "http://www.hearthpwn.com/cards/" + str(card_id)
     css = "#content > section > div > header.h2.no-sub.with-nav > h2"
@@ -737,8 +744,8 @@ def get_db_deck_updated(cursor, deckid):
 
     Parameters:
 
-    'cursor' - a SQLite3 cursor object
-    'deckid' - a HearthPwn deck ID
+    - 'cursor' - a SQLite3 cursor object
+    - 'deckid' - a HearthPwn deck ID
     """
     cursor.execute('SELECT updated FROM decks WHERE deckid IS ?', (deckid,))
     return cursor.fetchone()[0]
@@ -752,7 +759,7 @@ def get_db_card_percentages(cursor):
 
     Parameters:
 
-    'cursor' - a SQLite3 cursor object
+    - 'cursor' - a SQLite3 cursor object
     """
     sql = '''
             select cards.cardname,
